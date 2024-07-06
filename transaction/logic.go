@@ -18,52 +18,12 @@ import (
 	"time"
 )
 
-func GatherTransaction(blockNumber *big.Int, address common.Address, client *ethclient.Client) []dataStruct.TransactionDetails {
-
-	var transactions []dataStruct.TransactionDetails
-
-	block, err := client.BlockByNumber(context.Background(), blockNumber)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	chainID, err := client.NetworkID(context.Background())
-	if err != nil {
-		log.Fatal("Failed to retrieve block: %v", err)
-	}
-
-	countTx := 0
-
-	for _, tx := range block.Transactions() {
-		countTx++
-
-		signer := types.LatestSignerForChainID(chainID)
-		from, err := types.Sender(signer, tx)
-		if err == nil {
-			//fmt.Println("Sender: ", from.Hex())
-		} else {
-			fmt.Println("error:", err)
-		}
-
-		if tx.To() != nil && (*tx.To() == address || from == address) {
-
-			transactions = append(transactions, dataStruct.TransactionDetails{
-				BlockNumber: block.Number().Uint64(),
-				TxHash:      tx.Hash().Hex(),
-				From:        from.Hex(),
-				To:          tx.To().Hex(),
-				Value:       tx.Value().String(),
-			})
-		}
-	}
-	return transactions
-
-}
-
 var LastBlockNumber uint64 = 20241092
 
+// "CollectionOfSubscriber" declare connection of Subscriber collection
 var CollectionOfSubscriber *mongo.Collection = database.OpenCollection(database.Client, os.Getenv("collection_name_subscriber"))
 
+// "CollectionOfTransaction" declare connection of Transaction complexion
 var CollectionOfTransaction *mongo.Collection = database.OpenCollection(database.Client, os.Getenv("collection_name_transaction"))
 
 func GatherTransactionRealTime(client *ethclient.Client, addresses []common.Address, chainID *big.Int) {
@@ -71,13 +31,14 @@ func GatherTransactionRealTime(client *ethclient.Client, addresses []common.Addr
 	var transactions []dataStruct.TransactionDetails
 
 	for {
+
+		// read block header
 		header, err := client.HeaderByNumber(context.Background(), nil)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		if LastBlockNumber == 0 || header.Number.Uint64() > LastBlockNumber {
-			//if LastBlockNumber == 0 || LastBlockNumber+1 > LastBlockNumber {
 			LastBlockNumber = header.Number.Uint64()
 
 			block, err := client.BlockByNumber(context.Background(), big.NewInt(int64(LastBlockNumber)))
@@ -86,7 +47,9 @@ func GatherTransactionRealTime(client *ethclient.Client, addresses []common.Addr
 			}
 			fmt.Println("block Number = ", LastBlockNumber)
 
+			// count tx matched in block
 			count := 0
+
 			for _, tx := range block.Transactions() {
 
 				signed := types.LatestSignerForChainID(chainID)
@@ -96,7 +59,7 @@ func GatherTransactionRealTime(client *ethclient.Client, addresses []common.Addr
 					continue
 				}
 
-				// ghet
+				// gathering all transaction match with list address
 				for _, address := range addresses {
 					if tx.To() != nil && (*tx.To() == address || from == address) {
 						count++
@@ -113,10 +76,6 @@ func GatherTransactionRealTime(client *ethclient.Client, addresses []common.Addr
 			fmt.Println("total tx caught", count)
 
 			//store in to database
-			for _, tx := range transactions {
-				dataStruct.TrasactionGlobal = append(dataStruct.TrasactionGlobal, tx)
-			}
-
 			if len(transactions) > 0 {
 				storeTransaction(transactions)
 			}
@@ -125,11 +84,11 @@ func GatherTransactionRealTime(client *ethclient.Client, addresses []common.Addr
 			transactions = transactions[:0]
 
 		}
-
-		time.Sleep(15 * time.Second)
+		// read block each 12sec
+		time.Sleep(12 * time.Second)
 
 	}
-	fmt.Println("outside")
+
 }
 
 func storeTransaction(transaction []dataStruct.TransactionDetails) {
@@ -186,20 +145,6 @@ func QueryTransaction(address common.Address) ([]dataStruct.TransactionDetails, 
 	return transactions, nil
 }
 
-func UpdateSubscriptionStatus(address []dataStruct.Address) error {
-
-	for _, address := range address {
-		filter := bson.M{"address": address.AddressSub}
-		update := bson.M{"$set": bson.M{"status": "true"}}
-
-		_, err := CollectionOfSubscriber.UpdateOne(context.Background(), filter, update)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func InsertAddress(address dataStruct.Address) error {
 
 	filter := bson.M{"address": address.AddressSub}
@@ -212,4 +157,16 @@ func InsertAddress(address dataStruct.Address) error {
 
 	_, err := CollectionOfSubscriber.UpdateOne(context.Background(), filter, update, option)
 	return err
+}
+
+func UnsubscribeAddress(address dataStruct.Address) error {
+	filter := bson.M{"address": address.AddressSub}
+	update := bson.M{"$set": bson.M{"status": false}}
+
+	_, err := CollectionOfSubscriber.UpdateOne(context.Background(), filter, update)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

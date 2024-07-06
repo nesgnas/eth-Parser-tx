@@ -5,40 +5,38 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
-	"math/big"
 	"net/http"
+	"regexp"
 	"serverETH/dataStruct"
-	"serverETH/eth"
 	"serverETH/transaction"
 )
-
-var client *ethclient.Client
-var transactions []dataStruct.TransactionDetails
-
-func Gathering() gin.HandlerFunc {
-	return func(context *gin.Context) {
-
-		client = eth.OpenNode("https://eth-pokt.nodies.app")
-
-		blockNumber := big.NewInt(20238323)
-		address := common.HexToAddress("0xD2C82F2e5FA236E114A81173e375a73664610998")
-		transactions = transaction.GatherTransaction(blockNumber, address, client)
-		context.JSON(http.StatusOK, gin.H{
-			"data": transactions,
-		})
-
-	}
-}
 
 func GetOutTransaction() gin.HandlerFunc {
 	return func(context *gin.Context) {
 
 		address := common.HexToAddress(context.Param("address"))
+
+		var temporaryAddress []dataStruct.Address
+		temporaryAddress, _ = GetSubscribers()
+
+		var found bool
+		for _, addr := range temporaryAddress {
+			if common.HexToAddress(addr.AddressSub) == address {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			context.JSON(http.StatusBadRequest, gin.H{
+				"error": "Address not found in subscribers list",
+			})
+			return
+		}
 
 		transactions, err := transaction.QueryTransaction(address)
 		if err != nil {
@@ -78,7 +76,17 @@ func AddSubscriber() gin.HandlerFunc {
 		var input AddressInput
 
 		if err := context.ShouldBindJSON(&input); err != nil {
-			context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
+			context.JSON(http.StatusBadRequest, gin.H{
+				"error": "Invalid JSON format",
+			})
+		}
+
+		// Validate Ethereum address format
+		if !isValidEthereumAddress(input.AddressSub) {
+			context.JSON(http.StatusBadRequest, gin.H{
+				"error": "Invalid Ethereum address format",
+			})
+			return
 		}
 
 		newAddress := dataStruct.Address{
@@ -95,6 +103,14 @@ func AddSubscriber() gin.HandlerFunc {
 		context.JSON(http.StatusOK, gin.H{"message": "Address added successfully"})
 	}
 }
+
+func isValidEthereumAddress(address string) bool {
+	// Ethereum address regex pattern
+	ethereumAddressPattern := regexp.MustCompile("^0x[0-9a-fA-F]{40}$")
+
+	return ethereumAddressPattern.MatchString(address)
+}
+
 func GetSubscribers() ([]dataStruct.Address, error) {
 	filter := bson.M{"status": true}
 
@@ -122,4 +138,86 @@ func GetSubscribers() ([]dataStruct.Address, error) {
 	}
 
 	return subscribers, nil
+}
+
+func CheckServerStatus() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var subscribers []dataStruct.Address
+
+		subscribers, _ = GetSubscribers()
+
+		if len(subscribers) == 0 {
+			c.JSON(200, gin.H{
+				"message": "No addresses to monitor",
+			})
+		} else {
+			c.JSON(200, gin.H{
+				"message":    "Welcome to the server",
+				"total_subs": len(subscribers),
+				"monitoring": subscribers,
+			})
+		}
+	}
+}
+
+type UnsubscribeInput struct {
+	Address string `json:"address"`
+}
+
+func UnsubscribeSubscriber() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var input UnsubscribeInput
+
+		if err := c.ShouldBindJSON(&input); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Invalid JSON format",
+			})
+			return
+		}
+
+		// Validate Ethereum address format
+		if !isValidEthereumAddress(input.Address) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Invalid Ethereum address format",
+			})
+			return
+		}
+
+		address := common.HexToAddress(input.Address)
+
+		// Check if the address exists and is subscribed
+		var temporaryAddress []dataStruct.Address
+		temporaryAddress, _ = GetSubscribers()
+
+		var subscriber dataStruct.Address
+
+		var found bool
+		for _, addr := range temporaryAddress {
+			if common.HexToAddress(addr.AddressSub) == address {
+				found = true
+				subscriber = addr
+				break
+			}
+		}
+
+		if !found {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Address not found in subscribers list",
+			})
+			return
+		}
+
+		// Unsubscribe the address by setting its status to false
+		subscriber.Status = false
+		if err := transaction.UnsubscribeAddress(subscriber); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to unsubscribe address",
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Address unsubscribed successfully",
+		})
+	}
 }

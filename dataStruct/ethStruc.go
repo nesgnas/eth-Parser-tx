@@ -7,5 +7,3 @@ type TransactionDetails struct {
 	To          string `bson:"to"`
 	Value       string `bson:"value"`
 }
-
-var TrasactionGlobal []TransactionDetails

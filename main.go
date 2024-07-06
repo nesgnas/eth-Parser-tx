@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"github.com/joho/godotenv"
 	"log"
+	"os"
 	"serverETH/controler"
 	"serverETH/dataStruct"
 	"serverETH/router"
@@ -17,31 +18,24 @@ import (
 
 func main() {
 
-	client := eth.OpenNode("https://eth-pokt.nodies.app")
+	err := godotenv.Load(".env")
 
+	// establish connection to Node ETH
+	client := eth.OpenNode(os.Getenv("ETH_NODE"))
+
+	// check available address in database
 	var subscribers []dataStruct.Address
-
 	subscribers, _ = controler.GetSubscribers()
-
-	fmt.Println("sub ", subscribers)
 
 	var addresses []common.Address
 	for _, addr := range subscribers {
 		addresses = append(addresses, common.HexToAddress(addr.AddressSub))
 	}
 
-	//addresses := []common.Address{
-	//	common.HexToAddress("{\n  \"address\": \"0x4838B106FCe9647Bdf1E7877BF73cE8B0BAD5f97\"\n}"),
-	//	// Add more addresses as needed
-	//}
-
 	chainID, err := client.NetworkID(context.Background())
 	if err != nil {
 		log.Fatalf("Failed to get network ID: %v", err)
 	}
-
-	fmt.Println("was heheheheeh")
-	fmt.Println(addresses)
 
 	// Create a WaitGroup to wait for the goroutine to finish
 	var wg sync.WaitGroup
@@ -50,6 +44,7 @@ func main() {
 	// Run the GatherTransactionRealTime function in a separate goroutine
 	go func() {
 		defer wg.Done()
+		// server always run this function
 		transaction.GatherTransactionRealTime(client, addresses, chainID)
 	}()
 
@@ -59,17 +54,9 @@ func main() {
 
 	router.Page(r)
 
-	// Define a basic endpoint
-	r.GET("/landingPage", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"value": "welcome to server",
-		})
-
-	})
-
 	// Run the Gin server in a separate goroutine
 	go func() {
-		if err := r.Run(":8000"); err != nil {
+		if err := r.Run(os.Getenv("SERVER_PORT")); err != nil {
 			log.Fatalf("Failed to run server: %v", err)
 		}
 	}()
