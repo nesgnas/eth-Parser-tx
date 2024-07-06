@@ -131,8 +131,8 @@ The blockchain parser does the following:
 
 1. **Clone the repository:**
   ```bash
-   git clone https://github.com/your/repository.git
-   cd repository
+   git clone https://github.com/nesgnas/serverETH
+   cd serverETH
   ```
 
 2. **Start Docker Compose for MongoDB:**
@@ -184,4 +184,14 @@ The server will start at http://localhost:8000.
    ![image](https://github.com/nesgnas/serverETH/assets/90855639/ad1f72a7-f024-40eb-a29a-a30fc24df63a)
 
 
+## TESTING WITH TEST.GO
+1. **RUN SERVER:**
+  ```bash
+   go run main.go
+  ```
 
+2. **RUN UNIT TEST:**
+  ```bash
+   go run test.go
+  ```
+  
