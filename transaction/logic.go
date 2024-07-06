@@ -6,9 +6,14 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"math/big"
+	"os"
 	"serverETH/dataStruct"
+	"serverETH/database"
 	"serverETH/eth"
 	"time"
 )
@@ -55,35 +60,31 @@ func GatherTransaction(blockNumber *big.Int, address common.Address, client *eth
 
 }
 
-func GatherTransctionRealTime(client *ethclient.Client, addresses []common.Address, chainID *big.Int) {
-	fmt.Println("was heheheheeh")
-	var lastBlockNumber uint64 = 20241092
+var LastBlockNumber uint64 = 20241092
+
+var CollectionOfSubscriber *mongo.Collection = database.OpenCollection(database.Client, os.Getenv("collection_name_subscriber"))
+
+var CollectionOfTransaction *mongo.Collection = database.OpenCollection(database.Client, os.Getenv("collection_name_transaction"))
+
+func GatherTransactionRealTime(client *ethclient.Client, addresses []common.Address, chainID *big.Int) {
 
 	var transactions []dataStruct.TransactionDetails
-	fmt.Println("was here")
-
-	//var counterBlock = 0
 
 	for {
-		//if counterBlock == 5 {
-		//	break
-		//}
-		//
-		//counterBlock++
 		header, err := client.HeaderByNumber(context.Background(), nil)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		if lastBlockNumber == 0 || header.Number.Uint64() > lastBlockNumber {
-			//if lastBlockNumber == 0 || lastBlockNumber+1 > lastBlockNumber {
-			lastBlockNumber = header.Number.Uint64()
+		if LastBlockNumber == 0 || header.Number.Uint64() > LastBlockNumber {
+			//if LastBlockNumber == 0 || LastBlockNumber+1 > LastBlockNumber {
+			LastBlockNumber = header.Number.Uint64()
 
-			block, err := client.BlockByNumber(context.Background(), big.NewInt(int64(lastBlockNumber)))
+			block, err := client.BlockByNumber(context.Background(), big.NewInt(int64(LastBlockNumber)))
 			if err != nil {
 				log.Fatal(err)
 			}
-			fmt.Println("block Number = ", lastBlockNumber)
+			fmt.Println("block Number = ", LastBlockNumber)
 
 			count := 0
 			for _, tx := range block.Transactions() {
@@ -108,12 +109,16 @@ func GatherTransctionRealTime(client *ethclient.Client, addresses []common.Addre
 						})
 					}
 				}
-
 			}
 			fmt.Println("total tx caught", count)
+
 			//store in to database
 			for _, tx := range transactions {
 				dataStruct.TrasactionGlobal = append(dataStruct.TrasactionGlobal, tx)
+			}
+
+			if len(transactions) > 0 {
+				storeTransaction(transactions)
 			}
 
 			//clear transaction array
@@ -121,18 +126,90 @@ func GatherTransctionRealTime(client *ethclient.Client, addresses []common.Addre
 
 		}
 
-		//for _, txDetails := range transactions {
-		//	fmt.Printf("Block Number: %d\n", txDetails.BlockNumber)
-		//	fmt.Printf("Transaction: %s\n", txDetails.TxHash)
-		//	fmt.Printf("From: %s\n", txDetails.From)
-		//	fmt.Printf("To: %s\n", txDetails.To)
-		//	fmt.Printf("Value: %s\n", txDetails.Value)
-		//}
-
-		time.Sleep(12 * time.Second)
-		//time.Sleep(12 * time.Second)
+		time.Sleep(15 * time.Second)
 
 	}
 	fmt.Println("outside")
+}
 
+func storeTransaction(transaction []dataStruct.TransactionDetails) {
+	var documents []interface{}
+
+	for _, tx := range transaction {
+
+		doc := bson.M{
+			"block_number": tx.BlockNumber,
+			"hash":         tx.TxHash,
+			"from":         tx.From,
+			"to":           tx.To,
+			"value":        tx.Value,
+		}
+		documents = append(documents, doc)
+	}
+
+	_, err := CollectionOfTransaction.InsertMany(context.Background(), documents)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Stored", len(documents), "transactions in MongoDB")
+}
+
+func QueryTransaction(address common.Address) ([]dataStruct.TransactionDetails, error) {
+	filter := bson.M{
+		"$or": []bson.M{
+			{"from": address.Hex()},
+			{"to": address.Hex()},
+		},
+	}
+
+	findOptions := options.Find()
+
+	cursor, err := CollectionOfTransaction.Find(context.Background(), filter, findOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(context.Background())
+
+	var transactions []dataStruct.TransactionDetails
+
+	for cursor.Next(context.Background()) {
+		var tx dataStruct.TransactionDetails
+		if err := cursor.Decode(&tx); err != nil {
+			return nil, err
+		}
+		transactions = append(transactions, tx)
+	}
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+	return transactions, nil
+}
+
+func UpdateSubscriptionStatus(address []dataStruct.Address) error {
+
+	for _, address := range address {
+		filter := bson.M{"address": address.AddressSub}
+		update := bson.M{"$set": bson.M{"status": "true"}}
+
+		_, err := CollectionOfSubscriber.UpdateOne(context.Background(), filter, update)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func InsertAddress(address dataStruct.Address) error {
+
+	filter := bson.M{"address": address.AddressSub}
+	update := bson.M{"$set": bson.M{
+		"address": address.AddressSub,
+		"status":  address.Status,
+	}}
+
+	option := options.Update().SetUpsert(true)
+
+	_, err := CollectionOfSubscriber.UpdateOne(context.Background(), filter, update, option)
+	return err
 }

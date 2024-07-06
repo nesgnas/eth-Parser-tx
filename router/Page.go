@@ -7,5 +7,7 @@ import (
 
 func Page(incomingRouter *gin.Engine) {
 	incomingRouter.GET("/eth", controler.Gathering())
-	incomingRouter.GET("/ethTransaction", controler.GetOutTransaction())
+	incomingRouter.GET("/ethTransaction/:address", controler.GetOutTransaction())
+	incomingRouter.GET("/currentBlockNumber", controler.GetCurrentBlockNumber())
+	incomingRouter.POST("/subscribeToServer", controler.AddSubscriber())
 }
