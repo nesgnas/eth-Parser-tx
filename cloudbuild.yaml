@@ -1,0 +1,23 @@
+steps:
+  # Docker Build
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t',
+           'asia-east1-docker.pkg.dev/server-eth/eth-server/myimage',
+           '.']
+
+  # Docker Push
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push',
+           'asia-east1-docker.pkg.dev/server-eth/eth-server/myimage']
+
+  # Entrypoint, timeout and environment variables
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    timeout: 240s
+    args: ['run', 'deploy', 'hello', '--image',
+           'asia-east1-docker.pkg.dev/server-eth/eth-server/myimage',
+            '--region', 'us-central1'
+    ]
+
+options:
+  logging: CLOUD_LOGGING_ONLY

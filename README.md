@@ -184,14 +184,3 @@ The server will start at http://localhost:8000.
    ![image](https://github.com/nesgnas/serverETH/assets/90855639/ad1f72a7-f024-40eb-a29a-a30fc24df63a)
 
 
-## TESTING WITH TEST.GO
-1. **RUN SERVER:**
-  ```bash
-   go run main.go
-  ```
-
-2. **RUN UNIT TEST:**
-  ```bash
-   go run test.go
-  ```
-  
