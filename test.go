@@ -23,13 +23,13 @@ func main() {
 		// Example test cases, update with your actual endpoints
 		{"CheckServerStatus", http.MethodGet, "/", nil, http.StatusOK},
 
-		{"GetOutTransaction", http.MethodGet, "/ethTransaction/0x1234567890123456789012345678901234567890", nil, http.StatusOK},
+		{"GetOutTransaction", http.MethodGet, "/transactions/0x8C8D7C46219D9205f056f28fee5950aD564d7461", nil, http.StatusOK},
 
-		{"GetCurrentBlockNumber", http.MethodGet, "/currentBlockNumber", nil, http.StatusOK},
+		{"GetCurrentBlockNumber", http.MethodGet, "/blockNumber", nil, http.StatusOK},
 
-		{"AddSubscriber", http.MethodPost, "/subscribeToServer", map[string]string{"address": "0x1234567890123456789012345678901234567890"}, http.StatusOK},
+		{"AddSubscriber", http.MethodPost, "/subscriptions", map[string]string{"address": "0x1234567890123456789012345678901234567890"}, http.StatusOK},
 
-		{"UnsubscribeSubscriber", http.MethodPut, "/subscribeToServer", map[string]string{"address": "0x1234567890123456789012345678901234567890"}, http.StatusOK},
+		{"UnsubscribeSubscriber", http.MethodPut, "/subscriptions", map[string]string{"address": "0x1234567890123456789012345678901234567890"}, http.StatusOK},
 	}
 
 	// Slice to hold test results

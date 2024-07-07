@@ -7,8 +7,8 @@ import (
 
 func Page(incomingRouter *gin.Engine) {
 	incomingRouter.GET("/", controler.CheckServerStatus())
-	incomingRouter.GET("/ethTransaction/:address", controler.GetOutTransaction())
-	incomingRouter.GET("/currentBlockNumber", controler.GetCurrentBlockNumber())
-	incomingRouter.POST("/subscribeToServer", controler.AddSubscriber())
-	incomingRouter.PUT("/subscribeToServer", controler.UnsubscribeSubscriber())
+	incomingRouter.GET("/transactions/:address", controler.GetOutTransaction())
+	incomingRouter.GET("/blockNumber", controler.GetCurrentBlockNumber())
+	incomingRouter.POST("/subscriptions", controler.AddSubscriber())
+	incomingRouter.PUT("/subscriptions", controler.UnsubscribeSubscriber())
 }
