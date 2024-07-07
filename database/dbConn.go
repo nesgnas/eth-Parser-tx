@@ -17,7 +17,7 @@ func DbInstance() *mongo.Client {
 		log.Fatal("Error loading .env file")
 	}
 
-	MongoDb := os.Getenv("MONGODB_URL")
+	MongoDb := "mongodb+srv://admin:admin@atlascluster.tkubpsf.mongodb.net/?retryWrites=true&w=majority&appName=AtlasCluster"
 
 	client, err := mongo.NewClient(options.Client().ApplyURI(MongoDb))
 	if err != nil {
