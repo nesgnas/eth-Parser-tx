@@ -11,7 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"math/big"
-	"os"
 	"serverETH/dataStruct"
 	"serverETH/database"
 	"serverETH/eth"
@@ -21,10 +20,10 @@ import (
 var LastBlockNumber uint64 = 20241092
 
 // "CollectionOfSubscriber" declare connection of Subscriber collection
-var CollectionOfSubscriber *mongo.Collection = database.OpenCollection(database.Client, os.Getenv("collection_name_subscriber"))
+var CollectionOfSubscriber *mongo.Collection = database.OpenCollection(database.Client, "subscriber")
 
 // "CollectionOfTransaction" declare connection of Transaction complexion
-var CollectionOfTransaction *mongo.Collection = database.OpenCollection(database.Client, os.Getenv("collection_name_transaction"))
+var CollectionOfTransaction *mongo.Collection = database.OpenCollection(database.Client, "transactions")
 
 func GatherTransactionRealTime(client *ethclient.Client, addresses []common.Address, chainID *big.Int) {
 
