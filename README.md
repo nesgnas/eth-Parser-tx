@@ -29,7 +29,6 @@ The blockchain parser does the following:
 
 - **Storage:** Uses MongoDB for storing subscribed addresses and their transactions.
 
-- **Setup Instructions:** Includes Docker Compose setup for MongoDB.
 
 ## APIs
 
@@ -134,16 +133,13 @@ The blockchain parser does the following:
    git clone https://github.com/nesgnas/serverETH
    cd serverETH
   ```
-
-2. **Start Docker Compose for MongoDB:**
-  ```bash
-   docker-compose up -d
-  ```
-3. **Run the application:**
+2. **Run the application:**
   ```bash
    go run main.go
   ```
 The server will start at http://localhost:8000.
+
+Or you can try deployment server at https://hello-wj2pbqhxtq-uc.a.run.app/
 
 ![image](https://github.com/nesgnas/serverETH/assets/90855639/4f2c9370-0242-46e7-bb12-3a6476d87deb)
 
