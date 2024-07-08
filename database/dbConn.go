@@ -17,7 +17,7 @@ func DbInstance() *mongo.Client {
 		log.Fatal("Error loading .env file")
 	}
 
-	MongoDb := "mongodb+srv://admin:stIRaq57caKolGWC@atlascluster.tkubpsf.mongodb.net/?retryWrites=true&w=majority&appName=AtlasCluster"
+	MongoDb := os.Getenv("MONGODB_URL")
 
 	client, err := mongo.NewClient(options.Client().ApplyURI(MongoDb))
 	if err != nil {
@@ -39,6 +39,6 @@ func DbInstance() *mongo.Client {
 var Client *mongo.Client = DbInstance()
 
 func OpenCollection(client *mongo.Client, collectionName string) *mongo.Collection {
-	var collection *mongo.Collection = client.Database(os.Getenv("DATABASE_NAME")).Collection(collectionName)
+	var collection *mongo.Collection = client.Database("ethTransactionDB").Collection(collectionName)
 	return collection
 }
